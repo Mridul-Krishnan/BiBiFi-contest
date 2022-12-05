@@ -8,8 +8,11 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.List;
+import java.util.Scanner;
 import java.util.regex.Pattern;
 
 import javax.crypto.BadPaddingException;
@@ -24,21 +27,63 @@ import javax.crypto.spec.SecretKeySpec;
 
 class LogData {
 
+	public LogData() {
+		Time = -1;
+		Room = -2;
+		this.filePath = null;
+		Token = null;
+		this.eName = null;
+		this.gName = null;
+		Event = null;
+		Salt = null;
+		IV = null;
+	}
+
 	@Override
 	public String toString() {
-		return "LogData [Time=" + Time + ", Room=" + Room + ", filePath=" + filePath + ", eName=" + eName + ", gName="
+		return "LogData [Time=" + Time + ", Room=" + Room + ", eName=" + eName + ", gName="
 				+ gName + ", Event=" + Event + "]";
 	}
 
+	// function to deconstruct the logdata after decryption
+
+	public LogData(String Data) {
+		int i;
+		String temp;
+		i = Data.indexOf("Time");
+		Time = Integer.parseInt(Data.substring(i + 5, Data.indexOf(",", i + 5)));
+		i = Data.indexOf("Room");
+		temp = new String(Data.substring(i + 5, Data.indexOf(",", i + 5)));
+		Room = Integer.parseInt(temp);
+		i = Data.indexOf("eName");
+		temp = new String(Data.substring(i + 6, Data.indexOf(",", i + 5)));
+		if (!temp.equals("null")) {
+			eName = temp;
+		}
+		i = Data.indexOf("gName");
+		temp = new String(Data.substring(i + 6, Data.indexOf(",", i + 5)));
+		if (!temp.equals("null")) {
+			gName = temp;
+		}
+		i = Data.indexOf("Event");
+		temp = new String(Data.substring(i + 6, Data.indexOf("]", i + 5)));
+		if (!temp.equals("null")) {
+			Event = temp;
+		}
+
+	}
+
 	int Time; // -T
-	int Room; // -R, we will assume -1 for Gallery
+	int Room; // -R, we will assume -1 for Gallery, -2 for outside gallery
 	String filePath; // log
 	String Token; // -K
 	String eName; // -E
 	String gName; // -G
 	String Event; // Arrival or Leave (A or L)
-	String Salt;
-	String IV;
+	String Salt; // used to generate AES password with the Token, random for each log
+	String IV; // IV for AES, random for each log
+
+	// Getters and Setters
 
 	public String getIV() {
 		return IV;
@@ -114,6 +159,8 @@ class LogData {
 
 }
 
+// Set of static functiond wrapped in Salting class to convert between hex
+// string and byte array
 class Salting {
 
 	public static String byteToHex(byte num) {
@@ -163,8 +210,10 @@ class Salting {
 
 class LogAppend {
 
+	// Encryption algorithm used
 	private static String algorithmString = "AES/CBC/PKCS5Padding";
 
+	// Generating secure password for AES using Token and random salt
 	private static SecretKey getPasswordBasedKey(String cipher, int keySize, char[] password, LogData obj)
 			throws NoSuchAlgorithmException, InvalidKeySpecException {
 
@@ -191,6 +240,7 @@ class LogAppend {
 		return new IvParameterSpec(iv);
 	}
 
+	// Encryption function
 	private static String encrypt(String algorithm, String input, SecretKey key,
 			IvParameterSpec iv) throws NoSuchPaddingException, NoSuchAlgorithmException,
 			InvalidAlgorithmParameterException, InvalidKeyException,
@@ -204,6 +254,7 @@ class LogAppend {
 				.encodeToString(cipherText);
 	}
 
+	// Decryption function
 	public static String decrypt(String algorithm, String cipherText, SecretKey key,
 			IvParameterSpec iv) throws NoSuchPaddingException, NoSuchAlgorithmException,
 			InvalidAlgorithmParameterException, InvalidKeyException,
@@ -212,17 +263,21 @@ class LogAppend {
 		Cipher cipher = Cipher.getInstance(algorithm);
 		SecretKeySpec spec = new SecretKeySpec(key.getEncoded(), "AES");
 		cipher.init(Cipher.DECRYPT_MODE, spec, iv);
+
 		byte[] plainText = cipher.doFinal(Base64.getDecoder()
 				.decode(cipherText));
 		return new String(plainText);
 	}
 
+	// validating the commandline parameters
 	public static boolean validParams(String args[]) {
 		boolean checkValid = true;
 		String Params = String.join(" ", args);
-		// [a-zA-Z0-9/\\\\ .-] if we should include other than project directory for log
+		Params.replace("\\", "/");
+		// [a-zA-Z0-9_/\\\\ .-] if we should include other than project directory for
+		// log
 		// files
-		if (!Pattern.matches("[a-zA-Z0-9 .-]+", Params))
+		if (!Pattern.matches("[a-zA-Z0-9 /.-]+", Params))
 			checkValid = false;
 		if (!((Params.contains("-A") && !Params.contains("-L")) || (!Params.contains("-A") && Params.contains("-L"))))
 			checkValid = false;
@@ -233,7 +288,8 @@ class LogAppend {
 		if (!Params.contains("-T"))
 			checkValid = false;
 		if (!(Params.split("-K").length < 3 && Params.split("-T").length < 3 && Params.split("-L").length < 3
-				&& Params.split("-A").length < 3 && Params.split("-E").length < 3 && Params.split("-G").length < 3))
+				&& Params.split("-A").length < 3 && Params.split("-E").length < 3 && Params.split("-G").length < 3
+				&& Params.split("-G").length < 3))
 			checkValid = false; // prevents multiple occurences of same parameter.
 		return checkValid;
 	}
@@ -284,7 +340,7 @@ class LogAppend {
 						}
 
 						data.setEvent("L");
-						
+
 						break;
 
 					case 'A':
@@ -352,15 +408,179 @@ class LogAppend {
 			i = i + 1;
 		}
 
-		data.setFilePath(args[args.length - 1]);
+		if (!String.join(" ", args).contains("-R")) {
+			data.setRoom(-1);
+		}
+
+		data.setFilePath(args[args.length - 1].replace("\\", "/")); // convert file path backslashes to forward slashes.
 
 		return checkValid;
 
 	}
 
+	public static boolean validateLog(LogData newData, String log) {
+
+		List<String> dataList = Arrays.asList(log.split("\\R"));
+		Collections.reverse(dataList); // reversing the log
+		List<LogData> LogList = new ArrayList<>();
+		boolean newName = true;
+		for (String logline : dataList) {
+			LogList.add(new LogData(logline));
+		}
+		if (newData.geteName() != null) {
+			for (LogData oldLog : LogList) {
+				if (newData.geteName().equals(oldLog.geteName())) {
+					newName = false;
+					if (newData.getTime() > oldLog.getTime()) {
+						if ((newData.getEvent().equals("L") && oldLog.getEvent().equals("A"))
+								|| (newData.getEvent().equals("A") && oldLog.getEvent().equals("L"))
+								|| oldLog.getRoom() == -1) {
+							if (newData.getEvent().equals("A")) {
+								if (oldLog.getRoom() == -1 && newData.getRoom() != -1) {
+									return true;
+								} else {
+									return false;
+								}
+							} else {
+								if (oldLog.getRoom() == newData.getRoom() && newData.getRoom() != -1) {
+									newData.setRoom(-1);
+									return true;
+								} else if (newData.getRoom() == -1) {
+									newData.setRoom(-2);
+								} else {
+									return false;
+								}
+							}
+						} else {
+							return false;
+						}
+					} else {
+						return false;
+					}
+
+				}
+			}
+
+		} else if (newData.getgName() != null) {
+			for (LogData oldLog : LogList) {
+				if (newData.getgName().equals(oldLog.getgName())) {
+					newName = false;
+					if (newData.getTime() > oldLog.getTime()) {
+						System.out.println("reached:" + oldLog.getRoom());
+						if ((newData.getEvent().equals("L") && oldLog.getEvent().equals("A"))
+								|| (newData.getEvent().equals("A") && oldLog.getEvent().equals("L"))
+								|| oldLog.getRoom() == -1) {
+							System.out.println("reached");
+							if (newData.getEvent().equals("A")) {
+								if (oldLog.getRoom() == -1 && newData.getRoom() != -1) {
+									return true;
+								} else {
+									return false;
+								}
+							} else {
+								if (oldLog.getRoom() == newData.getRoom() && newData.getRoom() != -1) {
+									newData.setRoom(-1);
+									return true;
+								} else if (newData.getRoom() == -1) {
+									newData.setRoom(-2);
+								} else {
+									return false;
+								}
+							}
+						} else {
+							return false;
+						}
+					} else {
+						return false;
+					}
+
+				}
+			}
+
+		} else {
+			return false;
+		}
+
+		if (newName) {
+			if (newData.getRoom() == -1 && newData.getEvent().equals("A"))
+				return true;
+			else
+				return false;
+		}
+		return true;
+
+	}
+
+	public static boolean executeCommand(String[] args, LogData objData) {
+		try {
+			String pwdString = new String();
+			String finalLog = new String();
+			if (validParams(args)) {
+				if (extractParamList(args, objData)) {
+					File f = new File(objData.getFilePath());
+					if (f.exists() && f.isFile()) {
+						Scanner reader = new Scanner(f);
+						objData.setSalt(reader.nextLine());
+						objData.setIV(reader.nextLine());
+						pwdString = objData.getToken();
+						String encryptedLog = reader.nextLine();
+						reader.close();
+						String decryptedLog = decrypt(algorithmString, encryptedLog,
+								getPasswordBasedKey(algorithmString, 128, pwdString.toCharArray(), objData),
+								new IvParameterSpec(Salting.decodeHexString(objData.getIV())));
+						// validate if new log doesn't contradict previous data
+						if (!validateLog(objData, decryptedLog))
+							return false;
+						// continues with log append if vallid log
+						finalLog = decryptedLog + "\n" + objData.toString();
+						System.out.println(finalLog);
+						String encryptedString = encrypt(algorithmString, finalLog,
+								getPasswordBasedKey(algorithmString, 128, pwdString.toCharArray(), objData),
+								new IvParameterSpec(Salting.decodeHexString(objData.getIV())));
+						f.createNewFile();
+						PrintWriter writer = new PrintWriter(f);
+						writer.println(objData.getSalt());
+						writer.println(objData.getIV());
+						writer.println(encryptedString);
+						writer.close();
+
+					} else {
+						if (objData.getFilePath().contains("/")) {
+							if (!f.getParentFile().isDirectory()) {
+								return false;
+							}
+						}
+						pwdString = objData.getToken();
+						objData.setIV(Salting.encodeHexString(generateIv().getIV()));
+						finalLog = objData.toString();
+						System.out.println(pwdString);
+						System.out.println(finalLog);
+						String encryptedString = encrypt(algorithmString, finalLog,
+								getPasswordBasedKey(algorithmString, 128, pwdString.toCharArray(), objData),
+								new IvParameterSpec(Salting.decodeHexString(objData.getIV())));
+						f.createNewFile();
+						PrintWriter writer = new PrintWriter(f);
+						writer.println(objData.getSalt());
+						writer.println(objData.getIV());
+						writer.println(encryptedString);
+						writer.close();
+
+					}
+				} else
+					return false;
+			} else
+				return false;
+		} catch (Exception e) {
+			System.out.println(e.toString());
+			e.printStackTrace();
+			return false;
+		}
+		return true;
+	}
+
 	public static void main(String args[]) {
 
-		if(args.length==0)
+		if (args.length == 0)
 			System.exit(255);
 
 		LogData objData = new LogData();
@@ -370,30 +590,7 @@ class LogAppend {
 
 		try {
 			if (!args[0].equals("-B")) {
-				if (validParams(args)) {
-					if (extractParamList(args, objData)) {
-						File f = new File(objData.getFilePath());
-						if (f.exists() && f.isFile()) {
-							// authentication and appending
-						} else {
-
-							objData.setIV(Salting.encodeHexString(generateIv().getIV()));
-							finalLog = objData.toString();
-							String encryptedString = encrypt(algorithmString, finalLog,
-									getPasswordBasedKey(algorithmString, 128, pwdString.toCharArray(), objData),
-									new IvParameterSpec(Salting.decodeHexString(objData.getIV())));
-							f.createNewFile();
-							PrintWriter writer = new PrintWriter(f);
-							writer.println(objData.getSalt());
-							writer.println(objData.getIV());
-							writer.println(encryptedString);
-							writer.close();
-
-						}
-					} else
-						System.exit(255);
-				} else
-					System.exit(255);
+				executeCommand(args, objData);
 			} else {
 				// code for handling batch files
 			}
