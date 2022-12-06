@@ -438,15 +438,19 @@ class LogAppend {
 							if (newData.getEvent().equals("A")) {
 								if (oldLog.getRoom() == -1 && newData.getRoom() != -1) {
 									return true;
+								} else if (oldLog.getRoom() == -2 && newData.getRoom() == -1) {
+									return true;
 								} else {
 									return false;
 								}
 							} else {
+
 								if (oldLog.getRoom() == newData.getRoom() && newData.getRoom() != -1) {
 									newData.setRoom(-1);
 									return true;
-								} else if (newData.getRoom() == -1) {
+								} else if (oldLog.getRoom() == -1) {
 									newData.setRoom(-2);
+									return true;
 								} else {
 									return false;
 								}
@@ -466,13 +470,13 @@ class LogAppend {
 				if (newData.getgName().equals(oldLog.getgName())) {
 					newName = false;
 					if (newData.getTime() > oldLog.getTime()) {
-						System.out.println("reached:" + oldLog.getRoom());
 						if ((newData.getEvent().equals("L") && oldLog.getEvent().equals("A"))
 								|| (newData.getEvent().equals("A") && oldLog.getEvent().equals("L"))
 								|| oldLog.getRoom() == -1) {
-							System.out.println("reached");
 							if (newData.getEvent().equals("A")) {
 								if (oldLog.getRoom() == -1 && newData.getRoom() != -1) {
+									return true;
+								} else if (oldLog.getRoom() == -2 && newData.getRoom() == -1) {
 									return true;
 								} else {
 									return false;
@@ -481,8 +485,9 @@ class LogAppend {
 								if (oldLog.getRoom() == newData.getRoom() && newData.getRoom() != -1) {
 									newData.setRoom(-1);
 									return true;
-								} else if (newData.getRoom() == -1) {
+								} else if (oldLog.getRoom() == -1) {
 									newData.setRoom(-2);
+									return true;
 								} else {
 									return false;
 								}
@@ -533,7 +538,7 @@ class LogAppend {
 							return false;
 						// continues with log append if vallid log
 						finalLog = decryptedLog + "\n" + objData.toString();
-						System.out.println(finalLog);
+						//System.out.println(finalLog + "\nexecuted command");
 						String encryptedString = encrypt(algorithmString, finalLog,
 								getPasswordBasedKey(algorithmString, 128, pwdString.toCharArray(), objData),
 								new IvParameterSpec(Salting.decodeHexString(objData.getIV())));
@@ -553,8 +558,6 @@ class LogAppend {
 						pwdString = objData.getToken();
 						objData.setIV(Salting.encodeHexString(generateIv().getIV()));
 						finalLog = objData.toString();
-						System.out.println(pwdString);
-						System.out.println(finalLog);
 						String encryptedString = encrypt(algorithmString, finalLog,
 								getPasswordBasedKey(algorithmString, 128, pwdString.toCharArray(), objData),
 								new IvParameterSpec(Salting.decodeHexString(objData.getIV())));
@@ -571,8 +574,6 @@ class LogAppend {
 			} else
 				return false;
 		} catch (Exception e) {
-			System.out.println(e.toString());
-			e.printStackTrace();
 			return false;
 		}
 		return true;
@@ -582,7 +583,7 @@ class LogAppend {
 
 		if (args.length == 0)
 			System.exit(255);
-
+		boolean validCommand = true;
 		LogData objData = new LogData();
 		String pwdString = new String();
 		String finalLog = new String();
@@ -590,34 +591,33 @@ class LogAppend {
 
 		try {
 			if (!args[0].equals("-B")) {
-				executeCommand(args, objData);
+				validCommand = executeCommand(args, objData);
+			} else if (args[0].equals("-B") && (new File(args[1]).isFile())) {
+				File batchFile = new File(args[1]);
+				Scanner scanner = new Scanner(batchFile);
+				boolean checkBatchCommand = true;
+				while (scanner.hasNextLine()) {
+					objData = new LogData();
+					checkBatchCommand = executeCommand(scanner.nextLine().split(" "), objData);
+					if (!checkBatchCommand) {
+						validCommand = checkBatchCommand;
+						//System.out.println("invalid");
+					}
+				}
+				scanner.close();
 			} else {
-				// code for handling batch files
+				validCommand = false;
 			}
 		} catch (Exception e) {
-			System.out.println(e.toString());
+			validCommand = false;
+
 		}
 
-		// try {
-		// System.out.println(getPasswordBasedKey(algorithmString, 128,
-		// pwdString.toCharArray(), objData).toString());
-		// System.out.println(objData.Salt);
-		// objData.setIV(Salting.encodeHexString(generateIv().getIV()));
-		// String encryptedString = encrypt(algorithmString, finalLog,
-		// getPasswordBasedKey(algorithmString, 128, pwdString.toCharArray(), objData),
-		// new IvParameterSpec(Salting.decodeHexString(objData.getIV())));
-		// System.out.println("Encrypted String:" + encryptedString);
-		// String decryptedString = decrypt(algorithmString, encryptedString,
-		// getPasswordBasedKey(algorithmString, 128, pwdString.toCharArray(), objData),
-		// new IvParameterSpec(Salting.decodeHexString(objData.getIV())));
-		// System.out.println("Decrypted String:" + decryptedString);
-		// } catch (Exception e) {
-		// System.out.println(e.toString());;
-		// }
-
-		System.out.println("Executed");
-
-		System.exit(0);
+		if (validCommand) {
+			System.exit(0);
+		} else {
+			System.exit(255);
+		}
 	}
 
 }
