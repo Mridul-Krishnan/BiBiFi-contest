@@ -9,10 +9,10 @@ Default: $(CLASS_FILES) create_bin
 	$(JC) $<
 
 create_bin:
-	jar -cvmf MANIFEST_LA.MF logappend.jar l_append/LogAppend.class
+	jar -cvmf MANIFEST_LA.MF logappend.jar l_append/*.class
 	cat stub.sh logappend.jar > logappend && chmod +x logappend
 
-	jar -cvmf MANIFEST_LR.MF logread.jar l_read/LogRead.class
+	jar -cvmf MANIFEST_LR.MF logread.jar l_read/*.class
 	cat stub.sh logread.jar > logread && chmod +x logread
 
 clean:
