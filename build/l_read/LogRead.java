@@ -525,9 +525,13 @@ class LogRead {
 				System.out.println(String.join(",", employeeList));
 				System.out.print(String.join(",", guestList));
 				String membersRoom;
+
 				for (int Room : Rooms.keySet()) {
 					membersRoom = Rooms.get(Room);
-					System.out.print("\n" + Room + ": " + membersRoom.substring(0, membersRoom.length()));
+					String[] membersRoomList = membersRoom.split(",");
+					Arrays.sort(membersRoomList);
+					membersRoom = String.join(",", membersRoomList);
+					System.out.print("\n" + Room + ": " + membersRoom);
 				}
 
 			} else {
@@ -629,6 +633,7 @@ class LogRead {
 		if (validCommand) {
 			System.exit(0);
 		} else {
+			System.out.print("invalid");
 			System.exit(255);
 		}
 	}
