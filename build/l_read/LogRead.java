@@ -508,7 +508,6 @@ class LogRead {
 				String decryptedLog = decrypt(algorithmString, encryptedLog,
 						getPasswordBasedKey(algorithmString, 128, pwdString.toCharArray(), objData),
 						new IvParameterSpec(Salting.decodeHexString(objData.getIV())));
-				System.out.println(decryptedLog);
 				List<LogData> logList = getLogList(decryptedLog);
 				HashMap<Integer, String> gRooms = new HashMap<Integer, String>();
 				gRooms.put(-2, "nobody");
@@ -606,8 +605,6 @@ class LogRead {
 			}
 		} catch (Exception e) {
 			integrityViolation = true;
-			System.out.println("reached");
-			e.printStackTrace();
 			return false;
 		}
 
