@@ -1,7 +1,6 @@
 package l_read;
 
 import java.io.File;
-import java.io.PrintWriter;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -11,11 +10,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
-import java.util.Dictionary;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Scanner;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
 
@@ -444,7 +443,7 @@ class LogRead {
 				gRooms.put(-2, "nobody");
 				HashMap<Integer, String> eRooms = new HashMap<Integer, String>();
 				eRooms.put(-2, "nobody");
-				HashMap<Integer, String> Rooms = new HashMap<Integer, String>();
+				TreeMap<Integer, String> Rooms = new TreeMap<Integer, String>();
 				Rooms.put(-2, "nobody");
 				for (LogData Log : logList) {
 					if (Log.geteName() != null) {
@@ -528,7 +527,7 @@ class LogRead {
 				String membersRoom;
 				for (int Room : Rooms.keySet()) {
 					membersRoom = Rooms.get(Room);
-					System.out.print("\n" + Room + ":" + membersRoom.substring(0, membersRoom.length()));
+					System.out.print("\n" + Room + ": " + membersRoom.substring(0, membersRoom.length()));
 				}
 
 			} else {
