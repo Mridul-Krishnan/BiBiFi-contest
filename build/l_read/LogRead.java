@@ -15,6 +15,8 @@ import java.util.Dictionary;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Scanner;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.regex.Pattern;
 
 import javax.crypto.BadPaddingException;
@@ -281,8 +283,14 @@ class LogRead {
 			checkValid = false;
 		if (!Params.contains("-K"))
 			checkValid = false;
+		if(Params.contains("-R") && !((Params.contains("-E") && !Params.contains("-G")) || (!Params.contains("-E") && Params.contains("-G"))))
+			checkValid = false;
 		if (!(Params.split("-K").length < 3))
 			checkValid = false; // prevents multiple occurences of same parameter.
+			if (!(Params.split("-K").length < 3 && Params.split("-T").length < 3 && Params.split("-S").length < 3
+			&& Params.split("-R").length < 3 && Params.split("-E").length < 3 && Params.split("-G").length < 3
+			&& Params.split("-G").length < 3))
+		checkValid = false;
 		return checkValid;
 	}
 
@@ -376,21 +384,7 @@ class LogRead {
 
 						break;
 
-					case 'R':
-						if (!args[i].equals("-R")) {
-							checkValid = false;
-							break;
-						}
-						i = i + 1;
-						if (i >= args.length)
-							return false;
-						if (!Pattern.matches("[0-9]+", args[i])) {
-							checkValid = false;
-							break;
-						}
-						data.setRoom(Integer.parseInt(args[i]));
-
-						break;
+					
 					default:
 						break;
 				}
@@ -420,69 +414,6 @@ class LogRead {
 		return LogList;
 	}
 
-	public static boolean executeCommand(String[] args, LogData objData) {
-		try {
-			String pwdString = new String();
-			String finalLog = new String();
-			if (validParams(args)) {
-				if (extractParamList(args, objData)) {
-					File f = new File(objData.getFilePath());
-					if (f.exists() && f.isFile()) {
-						Scanner reader = new Scanner(f);
-						objData.setSalt(reader.nextLine());
-						objData.setIV(reader.nextLine());
-						pwdString = objData.getToken();
-						String encryptedLog = reader.nextLine();
-						reader.close();
-						String decryptedLog = decrypt(algorithmString, encryptedLog,
-								getPasswordBasedKey(algorithmString, 128, pwdString.toCharArray(), objData),
-								new IvParameterSpec(Salting.decodeHexString(objData.getIV())));
-						// validate if new log doesn't contradict previous data
-						// if (!validateLog(objData, decryptedLog))
-						// return false;
-						// continues with log append if vallid log
-						finalLog = decryptedLog + "\n" + objData.toString();
-						// System.out.println(finalLog + "\nexecuted command");
-						String encryptedString = encrypt(algorithmString, finalLog,
-								getPasswordBasedKey(algorithmString, 128, pwdString.toCharArray(), objData),
-								new IvParameterSpec(Salting.decodeHexString(objData.getIV())));
-						f.createNewFile();
-						PrintWriter writer = new PrintWriter(f);
-						writer.println(objData.getSalt());
-						writer.println(objData.getIV());
-						writer.println(encryptedString);
-						writer.close();
-
-					} else {
-						if (objData.getFilePath().contains("/")) {
-							if (!f.getParentFile().isDirectory()) {
-								return false;
-							}
-						}
-						pwdString = objData.getToken();
-						objData.setIV(Salting.encodeHexString(generateIv().getIV()));
-						finalLog = objData.toString();
-						String encryptedString = encrypt(algorithmString, finalLog,
-								getPasswordBasedKey(algorithmString, 128, pwdString.toCharArray(), objData),
-								new IvParameterSpec(Salting.decodeHexString(objData.getIV())));
-						f.createNewFile();
-						PrintWriter writer = new PrintWriter(f);
-						writer.println(objData.getSalt());
-						writer.println(objData.getIV());
-						writer.println(encryptedString);
-						writer.close();
-
-					}
-				} else
-					return false;
-			} else
-				return false;
-		} catch (Exception e) {
-			return false;
-		}
-		return true;
-	}
-
 	public static boolean readLogState(String[] args) {
 
 		if (!validParams(args)) {
@@ -497,7 +428,6 @@ class LogRead {
 		try {
 			if (new File(args[args.length - 1]).isFile()) {
 				String pwdString = new String();
-				String finalLog = new String();
 				File f = new File(args[args.length - 1]);
 				Scanner reader = new Scanner(f);
 				objData.setSalt(reader.nextLine());
@@ -508,6 +438,7 @@ class LogRead {
 				String decryptedLog = decrypt(algorithmString, encryptedLog,
 						getPasswordBasedKey(algorithmString, 128, pwdString.toCharArray(), objData),
 						new IvParameterSpec(Salting.decodeHexString(objData.getIV())));
+				
 				List<LogData> logList = getLogList(decryptedLog);
 				HashMap<Integer, String> gRooms = new HashMap<Integer, String>();
 				gRooms.put(-2, "nobody");
@@ -567,9 +498,9 @@ class LogRead {
 						}
 					}
 				}
-				eRooms.remove(-1);
+				//eRooms.remove(-1);
 				eRooms.remove(-2);
-				gRooms.remove(-1);
+				//gRooms.remove(-1);
 				gRooms.remove(-2);
 				Rooms.remove(-1);
 				Rooms.remove(-2);
@@ -611,31 +542,76 @@ class LogRead {
 		return true;
 	}
 
+	public static boolean readMemberRoom(String[] args) {
+		
+		if (!validParams(args)) {
+			return false;
+		}
+		
+		LogData objData = new LogData();
+		if (!extractParamList(args, objData)) {
+			return false;
+		}
+		
+		try {
+			String pwdString = new String();
+			File f = new File(args[args.length - 1]);
+			Scanner reader = new Scanner(f);
+			objData.setSalt(reader.nextLine());
+			objData.setIV(reader.nextLine());
+			pwdString = objData.getToken();
+			String encryptedLog = reader.nextLine();
+			reader.close();
+			String decryptedLog = decrypt(algorithmString, encryptedLog,
+					getPasswordBasedKey(algorithmString, 128, pwdString.toCharArray(), objData),
+					new IvParameterSpec(Salting.decodeHexString(objData.getIV())));
+
+			List<LogData> logList = getLogList(decryptedLog);
+			Set<Integer> roomSet = new TreeSet<>(); 
+			if (objData.geteName()!=null) {
+				for(LogData Log: logList){
+					if(objData.geteName().equals(Log.geteName())){
+						roomSet.add(Log.getRoom());
+					}
+				}
+			} else if(objData.getgName()!=null){
+				for(LogData Log: logList){
+					if(objData.getgName().equals(Log.getgName())){
+						roomSet.add(Log.getRoom());
+					}
+				}
+			} else{
+				return false;
+			}
+			roomSet.remove(-1);
+			roomSet.remove(-2);
+			String memberRooms = Arrays.toString(roomSet.toArray());
+			memberRooms = memberRooms.substring(1, memberRooms.length()-1).replaceAll(" ", "");
+			System.out.println(memberRooms);
+			
+		} catch (Exception e) {
+			integrityViolation = true;
+			e.printStackTrace();
+			return false;
+		}
+
+		return true;
+	}
+
 	public static void main(String args[]) {
 
 		if (args.length == 0)
 			System.exit(255);
 		boolean validCommand = true;
-		LogData objData = new LogData();
 		String argsString = String.join(" ", args);
 
 		try {
 			if (argsString.contains("-S") && !argsString.contains("-R") && !argsString.contains("-I")
 					&& !argsString.contains("-T")) {
 				validCommand = readLogState(args);
-			} else if (args[0].equals("-B") && (new File(args[1]).isFile())) {
-				File batchFile = new File(args[1]);
-				Scanner scanner = new Scanner(batchFile);
-				boolean checkBatchCommand = true;
-				while (scanner.hasNextLine()) {
-					objData = new LogData();
-					checkBatchCommand = executeCommand(scanner.nextLine().split(" "), objData);
-					if (!checkBatchCommand) {
-						validCommand = checkBatchCommand;
-						// System.out.println("invalid");
-					}
-				}
-				scanner.close();
+			} else if (argsString.contains("-R") && !argsString.contains("-S") && !argsString.contains("-I")
+			&& !argsString.contains("-T")) {
+				validCommand = readMemberRoom(args);
 			} else {
 				validCommand = false;
 			}
