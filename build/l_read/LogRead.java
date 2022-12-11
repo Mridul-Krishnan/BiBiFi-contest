@@ -13,9 +13,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Scanner;
-import java.util.Set;
 import java.util.TreeMap;
-import java.util.TreeSet;
 import java.util.regex.Pattern;
 
 import javax.crypto.BadPaddingException;
@@ -451,7 +449,8 @@ class LogRead {
 						boolean checkRoom = false;
 						List<String> eRoomValues = new ArrayList<String>(eRooms.values());
 						for (String eNames : eRoomValues) {
-							if (eNames.contains(Log.geteName())) {
+							List<String> eNameList = Arrays.asList(eNames.split(","));
+							if (eNameList.contains(Log.geteName())) {
 								checkRoom = true;
 								break;
 							}
@@ -476,7 +475,8 @@ class LogRead {
 						boolean checkRoom = false;
 						List<String> gRoomValues = new ArrayList<String>(gRooms.values());
 						for (String gNames : gRoomValues) {
-							if (gNames.contains(Log.getgName())) {
+							List<String> gNameList = Arrays.asList(gNames.split(","));
+							if (gNameList.contains(Log.getgName())) {
 								checkRoom = true;
 								break;
 							}
@@ -570,7 +570,8 @@ class LogRead {
 					new IvParameterSpec(Salting.decodeHexString(objData.getIV())));
 
 			List<LogData> logList = getLogList(decryptedLog);
-			Set<Integer> roomSet = new TreeSet<>();
+			Collections.reverse(logList);
+			List<Integer> roomSet = new ArrayList<Integer>();
 			if (objData.geteName() != null) {
 				for (LogData Log : logList) {
 					if (objData.geteName().equals(Log.geteName())) {
@@ -586,16 +587,13 @@ class LogRead {
 			} else {
 				return false;
 			}
-			roomSet.remove(-1);
-			roomSet.remove(-2);
-			Integer[] mRooms = new Integer[roomSet.size()];
-			mRooms = roomSet.toArray(mRooms);
-			Arrays.sort(mRooms);
-			for (Integer i = 0; i < mRooms.length; i++) {
-				if (i != mRooms.length - 1) {
-					System.out.print(mRooms[i] + ",");
+			roomSet.removeAll(Arrays.asList(-1));
+			roomSet.removeAll(Arrays.asList(-2));
+			for (Integer i = 0; i < roomSet.size(); i++) {
+				if (i != roomSet.size() - 1) {
+					System.out.print(roomSet.get(i) + ",");
 				} else {
-					System.out.print(mRooms[i]);
+					System.out.print(roomSet.get(i));
 				}
 			}
 
@@ -610,8 +608,10 @@ class LogRead {
 
 	public static void main(String args[]) {
 
-		if (args.length == 0)
+		if (args.length <4){
+			System.out.print("invalid");
 			System.exit(255);
+		}
 		boolean validCommand = true;
 		String argsString = String.join(" ", args);
 
@@ -622,6 +622,9 @@ class LogRead {
 			} else if (argsString.contains("-R") && !argsString.contains("-S") && !argsString.contains("-I")
 					&& !argsString.contains("-T")) {
 				validCommand = readMemberRoom(args);
+			} else if (argsString.contains("-I")
+					|| argsString.contains("-T")) {
+
 			} else {
 				validCommand = false;
 			}
