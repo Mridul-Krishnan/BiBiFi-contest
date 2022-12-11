@@ -599,7 +599,7 @@ class LogRead {
 
 		} catch (Exception e) {
 			integrityViolation = true;
-			e.printStackTrace();
+			System.out.println("integrity violation");
 			return false;
 		}
 
@@ -624,7 +624,7 @@ class LogRead {
 				validCommand = readMemberRoom(args);
 			} else if (argsString.contains("-I")
 					|| argsString.contains("-T")) {
-
+						System.out.println("unimplemented");
 			} else {
 				validCommand = false;
 			}
