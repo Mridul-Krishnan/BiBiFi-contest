@@ -1,0 +1,29 @@
+{
+    "target_team": 41,
+    "type": "integrity",
+    "commands": [
+        {
+            "program": "logappend",
+            "args": [
+                "-K",
+                "pass",
+                "-T",
+                "7",
+                "-G",
+                "tino",
+                "log2.txt"
+            ]
+        },
+        {
+            "program": "logappend",
+            "args": [
+                "-T",
+                "7",
+                "-G",
+                "tip",
+                "log1.txt"
+            ]
+        }
+    ],
+    "logfile": "log1.txt"
+}
