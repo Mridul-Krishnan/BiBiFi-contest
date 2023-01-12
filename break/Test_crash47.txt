@@ -1,0 +1,5 @@
+This test case uses the logappend commend with the timestamp (‘-T’) set to 22222222. It targets team 47.
+The crash was caused because the timestamp entered  caused a numberFormatException to be thrown . The test was categorised as a crash violation because the following set timestamp is a valid however due to memory safety the program crashed whilst attempting to parse the argument.
+
+Batch file unreadable due to incorrect format conversion: “<}Àü˝6n∞úÏ)á»>}ÙΩµ#i	ŒT¸H(üè$h1ñ"C@5ø1
+b∆åÕ/FàTˇsr}‹ÅdS#&ñoTZ’ud°6áyÆ∫f)+4	◊W	Ãuróza¢møÛPùàu XbÏ<WWﬂsxÄµR*.≈ﬂÈ_˚Ïù«]2ò€ı61◊K3√⁄‘+:D“Èy>¨=00±™.G≈”

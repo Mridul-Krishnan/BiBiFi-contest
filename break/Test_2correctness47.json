@@ -1,0 +1,20 @@
+{
+    "target_team": 47,
+    "type": "correctness",
+    "commands": [
+        {
+            "program": "logappend",
+            "args": [
+                "-K",
+                "secret",
+                "-T",
+                "1",
+                "-G",
+                "-A",
+                "Muller Milk",
+                "log2.txt"
+            ]
+        }
+    ]
+}
+

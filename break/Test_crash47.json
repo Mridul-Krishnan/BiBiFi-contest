@@ -1,0 +1,20 @@
+{
+    "target_team": 47,
+    "type": "crash",
+    "commands": [
+        {
+            "program": "logappend",
+            "args": [
+                "-K",
+                "secret",
+                "-T",
+                "22222222",
+                "-G",
+                "Tanaka",
+                "-A",
+                "log1.txt"
+            ]
+        }
+    ]
+}
+

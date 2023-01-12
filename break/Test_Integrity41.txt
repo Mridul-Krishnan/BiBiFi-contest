@@ -1,0 +1,2 @@
+This test case uses the logappend commend with an omitted token (-K). It targets team 41.
+This test is a violation of integrity because the data is appended to the log without a token being provided. Although an exception is thrown the and the program terminates the data is still written to the log.
